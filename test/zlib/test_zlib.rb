@@ -12,18 +12,11 @@ rescue LoadError
 end
 
 if defined? Zlib
-  class Zlib::TestCase < Test::Unit::TestCase
-    def child_env
-      return @child_env unless @child_env.nil?
+  child_env = {}
+  child_env['DFLTCC'] = '0' if RUBY_PLATFORM =~ /s390x/
+  Zlib::CHILD_ENV = child_env.freeze
 
-      child_env = {}
-      child_env['DFLTCC'] = '0' if RUBY_PLATFORM =~ /s390x/
-      @child_env = child_env
-      @child_env
-    end
-  end
-
-  class TestZlibDeflate < Zlib::TestCase
+  class TestZlibDeflate < Test::Unit::TestCase
     def test_initialize
       z = Zlib::Deflate.new
       s = z.deflate("foo", Zlib::FINISH)
@@ -55,7 +48,7 @@ if defined? Zlib
     end
 
     def test_deflate_chunked
-      assert_separately([child_env, '-rzlib'], <<~'end;')
+      assert_separately([Zlib::CHILD_ENV, '-rzlib'], <<~'end;')
         original = ''.dup
         chunks = []
         r = Random.new 0
@@ -87,7 +80,7 @@ if defined? Zlib
     end
 
     def test_deflate_chunked_break
-      assert_separately([child_env, '-rzlib'], <<~'end;')
+      assert_separately([Zlib::CHILD_ENV, '-rzlib'], <<~'end;')
         chunks = []
         r = Random.new 0
 
@@ -262,7 +255,7 @@ if defined? Zlib
     end
   end
 
-  class TestZlibInflate < Zlib::TestCase
+  class TestZlibInflate < Test::Unit::TestCase
     def test_class_inflate_dictionary
       assert_raise(Zlib::NeedDict) do
         Zlib::Inflate.inflate([0x08,0x3C,0x0,0x0,0x0,0x0].pack("c*"))
@@ -589,7 +582,7 @@ if defined? Zlib
     end
   end
 
-  class TestZlibGzipFile < Zlib::TestCase
+  class TestZlibGzipFile < Test::Unit::TestCase
     def test_gzip_reader_zcat
       Tempfile.create("test_zlib_gzip_file_to_io") {|t|
         t.binmode
@@ -844,7 +837,7 @@ if defined? Zlib
     end
   end
 
-  class TestZlibGzipReader < Zlib::TestCase
+  class TestZlibGzipReader < Test::Unit::TestCase
     D0 = "\037\213\010\000S`\017A\000\003\003\000\000\000\000\000\000\000\000\000"
     def test_read0
       assert_equal("", Zlib::GzipReader.new(StringIO.new(D0)).read(0))
@@ -967,7 +960,7 @@ if defined? Zlib
     end
 
     def test_unused2
-      assert_separately([child_env, '-rzlib', '-rstringio'], <<~'end;')
+      assert_separately([Zlib::CHILD_ENV, '-rzlib', '-rstringio'], <<~'end;')
         zio = StringIO.new
 
         io = Zlib::GzipWriter.new zio
@@ -1224,7 +1217,7 @@ if defined? Zlib
 
   end
 
-  class TestZlibGzipWriter < Zlib::TestCase
+  class TestZlibGzipWriter < Test::Unit::TestCase
     def test_invalid_new
       assert_raise(NoMethodError, "[ruby-dev:23228]") { Zlib::GzipWriter.new(nil).close }
       assert_raise(NoMethodError, "[ruby-dev:23344]") { Zlib::GzipWriter.new(true).close }
@@ -1318,7 +1311,7 @@ if defined? Zlib
     end
   end
 
-  class TestZlib < Zlib::TestCase
+  class TestZlib < Test::Unit::TestCase
     def test_version
       assert_instance_of(String, Zlib.zlib_version)
     end
@@ -1419,7 +1412,7 @@ if defined? Zlib
     end
 
     def test_deflate_stream
-      assert_separately([child_env, '-rzlib'], <<~'end;')
+      assert_separately([Zlib::CHILD_ENV, '-rzlib'], <<~'end;')
         r = Random.new 0
 
         deflated = ''.dup
@@ -1433,7 +1426,7 @@ if defined? Zlib
     end
 
     def test_gzip
-      assert_separately([child_env, '-rzlib'], <<~'end;')
+      assert_separately([Zlib::CHILD_ENV, '-rzlib'], <<~'end;')
         actual = Zlib.gzip("foo".freeze)
         actual[4, 4] = "\x00\x00\x00\x00" # replace mtime
         actual[9] = "\xff" # replace OS
